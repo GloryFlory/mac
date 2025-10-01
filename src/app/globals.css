@@ -1015,9 +1015,10 @@ body {
 
 @media (max-width: 480px) {
   .session-time-location {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
   }
   
   .styles-and-photo {

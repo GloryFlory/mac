@@ -10,7 +10,7 @@ const getTeacherImageSrc = (teachers) => {
   const specialMappings = {
     'mads': 'mads.png',
     'flo': 'flo-mac.jpeg',
-    'maria': 'maria.png',
+    'maria': 'maria.jpg',
     'daria': 'daria.png',
     'svetlana': 'svetlana.jpg',
     'andre': 'andre-daria.jpg' // Use the pair photo for Andre since no individual photo
