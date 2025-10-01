@@ -1,6 +1,7 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import sessionsData from '../data/sessions.json';
+import { fetchSessionsFromGoogleSheets } from '../utils/googleSheets';
 
 // Helper function to try different image extensions
 const getTeacherImageSrc = (teachers) => {
@@ -13,7 +14,7 @@ const getTeacherImageSrc = (teachers) => {
     'maria': 'maria.jpg',
     'daria': 'daria.png',
     'svetlana': 'svetlana.jpg',
-    'andre': 'andre-daria.jpg' // Use the pair photo for Andre since no individual photo
+    'andre': 'andre.jpg' // Andre now has his individual photo
   };
   
   // Check if this is a single teacher with a special mapping
@@ -69,6 +70,38 @@ const getSessionSize = (session) => {
   if (duration <= 30) return 'small';  // 15-30 min sessions (demos, breaks)
   if (duration <= 90) return 'medium'; // 60-90 min workshops
   return 'large'; // 2+ hour sessions
+};
+
+// Helper function to get time period for better grouping
+const getTimePeriod = (timeString) => {
+  const hour = parseInt(timeString.split(':')[0]);
+  if (hour < 9) return 'Early Morning';
+  if (hour < 12) return 'Morning';
+  if (hour < 14) return 'Lunch Time';
+  if (hour < 17) return 'Afternoon';
+  if (hour < 20) return 'Evening';
+  return 'Night';
+};
+
+// Helper function to get session type for styling
+const getSessionType = (session) => {
+  const title = session.title.toLowerCase();
+  if (title.includes('breakfast') || title.includes('lunch') || title.includes('dinner')) {
+    return 'meal';
+  }
+  if (title.includes('demo') || title.includes('warm up')) {
+    return 'demo';
+  }
+  if (title.includes('registration') || title.includes('arrival')) {
+    return 'registration';
+  }
+  if (title.includes('pool') || title.includes('relax') || title.includes('jam')) {
+    return 'break';
+  }
+  if (title.includes('yoga') || title.includes('healing') || title.includes('massage') || title.includes('cacao') || title.includes('therapeutics')) {
+    return 'wellness';
+  }
+  return 'workshop';
 };
 
 // Helper function to group sessions by time slots for better structure
@@ -130,40 +163,56 @@ const sortDays = (days) => {
   return days.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
 };
 
-const SessionCard = ({ session, onClick }) => {
-  const size = getSessionSize(session);
-  const isMeal = session.title === 'Breakfast' || session.title === 'Lunch' || session.title === 'Dinner';
-  const isDemo = session.title.includes('Demo') || session.title.includes('Warm Up');
+  // SessionCard component with compact layout and workshop highlighting
+  const SessionCard = ({ session, onClick, onStyleClick }) => {
+    const size = getSessionSize(session);
+    
+    // Use cardType from Google Sheets data, with fallback to old logic
+    let cardType = session.cardType || 'full';
+    
+    // Determine if this is a workshop (Full or Photo-only)
+    const isWorkshop = cardType === 'full' || cardType === 'photo-only';
+    const workshopClass = isWorkshop ? 'workshop-highlight' : 'non-workshop';
   
-  // List of special sessions that should only show Name, Time, and Location (no teacher photos)
-  const simplifiedSessions = [
-    'Arrival & Registration',
-    'Opening Circle and Ice breaker games',
-    'Dinner & Break',
-    'Acro Speed Dating',
-    'Jam',
-    'Registration',
-    'Pool/Relax/Jam'
-  ];
+  // Fallback logic for local JSON data (backward compatibility)
+  if (!session.cardType) {
+    const isMeal = session.title === 'Breakfast' || session.title === 'Lunch' || session.title === 'Dinner';
+    const isDemo = session.title.includes('Demo') || session.title.includes('Warm Up');
+    
+    const simplifiedSessions = [
+      'Arrival & Registration',
+      'Opening Circle and Ice breaker games',
+      'Dinner & Break',
+      'Acro Speed Dating',
+      'Jam',
+      'Registration',
+      'Pool/Relax/Jam'
+    ];
+    
+    const photoOnlySessions = [
+      'Yoga with Daria',
+      'Yoga with Maria',
+      'Aerial Yoga with Svetlana',
+      'Sound Healing with Mads',
+      'Thai Massage with Flo',
+      'Cacao Ceremony with Daria',
+      'Therapeutics with Andre'
+    ];
+    
+    if (isMeal || isDemo || simplifiedSessions.includes(session.title)) {
+      cardType = 'simplified';
+    } else if (photoOnlySessions.includes(session.title)) {
+      cardType = 'photo-only';
+    }
+  }
   
-  // List of sessions that should show Name, Time, Location, and Photo only (no level/prereqs)
-  const photoOnlySessions = [
-    'Yoga with Daria',
-    'Yoga with Maria',
-    'Aerial Yoga with Svetlana',
-    'Sound Healing with Mads',
-    'Thai Massage with Flo',
-    'Cacao Ceremony with Daria',
-    'Therapeutics with Andre'
-  ];
-  
-  const isSimplified = isMeal || isDemo || simplifiedSessions.includes(session.title);
-  const isPhotoOnly = photoOnlySessions.includes(session.title);
+  const isSimplified = cardType === 'simplified';
+  const isPhotoOnly = cardType === 'photo-only' || cardType === 'photo only';
   
   // Simplified card for meals, demos, and special sessions
   if (isSimplified) {
     return (
-      <div className={`session-card session-card-${size} simple-card`} onClick={() => onClick(session)}>
+      <div className={`session-card session-card-${size} simple-card ${workshopClass}`} onClick={() => onClick(session)}>
         <div className="session-header">
           <h3 className="session-title session-title-fixed-height">{session.title}</h3>
           <button className="info-button" onClick={(e) => { e.stopPropagation(); onClick(session); }}>
@@ -183,7 +232,7 @@ const SessionCard = ({ session, onClick }) => {
   // Photo-only card for special sessions (name, time, location, photo only)
   if (isPhotoOnly) {
     return (
-      <div className={`session-card session-card-${size} photo-only-card`} onClick={() => onClick(session)}>
+      <div className={`session-card session-card-${size} photo-only-card ${workshopClass}`} onClick={() => onClick(session)}>
         <div className="session-header">
           <h3 className="session-title session-title-fixed-height">{session.title}</h3>
           <button className="info-button" onClick={(e) => { e.stopPropagation(); onClick(session); }}>
@@ -241,10 +290,10 @@ const SessionCard = ({ session, onClick }) => {
     );
   }
   
-  // Full card for workshops with simplified layout
+  // Full card for workshops with compact layout
   return (
-    <div className={`session-card session-card-${size}`} onClick={() => onClick(session)}>
-      {/* 1. Name */}
+    <div className={`session-card session-card-${size} ${workshopClass}`} onClick={() => onClick(session)}>
+      {/* Line 1: Name and Info button */}
       <div className="session-header">
         <h3 className="session-title session-title-fixed-height">{session.title}</h3>
         <button className="info-button" onClick={(e) => { e.stopPropagation(); onClick(session); }}>
@@ -253,85 +302,88 @@ const SessionCard = ({ session, onClick }) => {
       </div>
       
       <div className="session-content">
-        {/* 2. Time/Room */}
+        {/* Line 2: Time and Room */}
         <div className="session-time-location">
           <span className="time">{timeRange(session.start, session.end)}</span>
           <span className="location">{session.location}</span>
         </div>
         
-        {/* 3. Level */}
-        <div className="session-level">
+        {/* Line 3: Teacher name with Hyperlink */}
+        {session.teachers && session.teachers.length > 0 && (
+          <div className="teachers-names-compact">
+            <a 
+              href={getTeacherLink(session.teachers)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="teacher-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {session.teachers.join(' and ')}
+            </a>
+          </div>
+        )}
+        
+        {/* Line 4: Level and Type Tags */}
+        <div className="level-and-tags">
           <span 
-            className="level-badge" 
+            className="level-badge level-badge-compact" 
             style={{ backgroundColor: getLevelColor(session.level) }}
           >
             {session.level}
           </span>
+          <div className="styles-compact">
+            {session.styles.map((style, index) => (
+              <button 
+                key={index} 
+                className="style-tag style-tag-compact clickable"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent card click
+                  onStyleClick(style);
+                }}
+                title={`Filter by ${style}`}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
         </div>
         
-        {/* 4. Prerequisites - show for all workshops */}
-        <div className="prereqs">
+        {/* Line 5: Prerequisites */}
+        <div className="prereqs-compact">
           <strong>Pre-Reqs:</strong> {session.prereqs && session.prereqs !== "" && session.prereqs !== "TBD" ? session.prereqs : "None"}
         </div>
         
-        {/* 5. Teachers with profile picture positioned at bottom right */}
+        {/* Teacher Photo - same positioning for both mobile and desktop */}
         {session.teachers && session.teachers.length > 0 && (
-          <div className="teachers-section">
-            <div className="teachers-names">
-              <strong>Teachers:</strong>
-              <div className="teacher-links">
-                <a 
-                  href={getTeacherLink(session.teachers)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="teacher-link"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {session.teachers.join(' and ')}
-                </a>
-              </div>
+          <div className="teacher-photo-bottom-right">
+            <img 
+              src={getTeacherImageSrc(session.teachers)}
+              alt={session.teachers.join(' and ')}
+              className="teacher-photo-large"
+              onError={(e) => {
+                // Try different extensions
+                const baseName = session.teachers.join('-').toLowerCase().replace(/\s+/g, '-');
+                const currentSrc = e.target.src;
+                
+                if (currentSrc.endsWith('.jpg')) {
+                  e.target.src = `/teachers/${baseName}.png`;
+                } else if (currentSrc.endsWith('.png')) {
+                  e.target.src = `/teachers/${baseName}.jpeg`;
+                } else {
+                  // All extensions failed, show placeholder
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }
+              }}
+            />
+            <div className="teacher-placeholder-large" style={{ display: 'none' }}>
+              {session.teachers.length === 1 
+                ? session.teachers[0].split(' ').map(n => n[0]).join('').toUpperCase()
+                : session.teachers.map(teacher => teacher.split(' ')[0][0]).join('').toUpperCase()
+              }
             </div>
           </div>
         )}
-        
-        {/* 6. Tags and Teacher Photo inline */}
-        <div className="styles-and-photo">
-          <div className="styles">
-            {session.styles.map((style, index) => (
-              <span key={index} className="style-tag">{style}</span>
-            ))}
-          </div>
-          {session.teachers && session.teachers.length > 0 && (
-            <div className="teacher-photo-inline">
-              <img 
-                src={getTeacherImageSrc(session.teachers)}
-                alt={session.teachers.join(' and ')}
-                className="teacher-photo-large"
-                onError={(e) => {
-                  // Try different extensions
-                  const baseName = session.teachers.join('-').toLowerCase().replace(/\s+/g, '-');
-                  const currentSrc = e.target.src;
-                  
-                  if (currentSrc.endsWith('.jpg')) {
-                    e.target.src = `/teachers/${baseName}.png`;
-                  } else if (currentSrc.endsWith('.png')) {
-                    e.target.src = `/teachers/${baseName}.jpeg`;
-                  } else {
-                    // All extensions failed, show placeholder
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }
-                }}
-              />
-              <div className="teacher-placeholder-large" style={{ display: 'none' }}>
-                {session.teachers.length === 1 
-                  ? session.teachers[0].split(' ').map(n => n[0]).join('').toUpperCase()
-                  : session.teachers.map(teacher => teacher.split(' ')[0][0]).join('').toUpperCase()
-                }
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -364,70 +416,108 @@ const SessionModal = ({ session, onClose }) => {
   const isSimplified = isMeal || isDemo || simplifiedSessions.includes(session.title);
   const isPhotoOnly = photoOnlySessions.includes(session.title);
 
+  // Get teacher bio link (single link for all teachers)
+  const teacherBioLink = session.teachers && session.teachers.length > 0 ? getTeacherLink(session.teachers) : '#';
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{session.title}</h2>
+          <div className="modal-title-section">
+            <h2>{session.title}</h2>
+            <div className="modal-quick-info">
+              <span className="modal-time">{timeRange(session.start, session.end)}</span>
+              <span className="modal-day">{session.day}</span>
+              <span className="modal-location">{session.location}</span>
+            </div>
+          </div>
           <button className="close-button" onClick={onClose}>&times;</button>
         </div>
         
-        <div className="modal-body">
-          <div className="session-details">
-            <div className="detail-row-flex">
-              <div className="detail-item">
-                <strong>Time:</strong> {timeRange(session.start, session.end)}
-              </div>
-              <div className="detail-item">
-                <strong>Day:</strong> {session.day}
-              </div>
-              <div className="detail-item">
-                <strong>Location:</strong> {session.location}
+        {/* Teacher Photo Section - Full Width under header */}
+        {session.teachers && session.teachers.length > 0 && (
+          <div className="modal-teacher-section">
+            <div className="modal-teacher-photo">
+              <img 
+                src={getTeacherImageSrc(session.teachers)}
+                alt={`${session.teachers.join(' and ')}`}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="modal-teacher-initials" style={{ display: 'none' }}>
+                {session.teachers.map(teacher => teacher.split(' ').map(n => n[0]).join('')).join(' & ')}
               </div>
             </div>
+            <div className="modal-teacher-info">
+              <h3 className="modal-teacher-names">{session.teachers.join(' & ')}</h3>
+              {teacherBioLink !== '#' && (
+                <a href={teacherBioLink} target="_blank" rel="noopener noreferrer" className="modal-teacher-link">
+                  View Teacher Bio →
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div className="modal-body">
+          <div className="session-details">
             
-            {!isSimplified && (
-              <div className="detail-row">
-                <strong>Level:</strong> 
-                <span 
-                  className="level-badge level-badge-modal" 
-                  style={{ backgroundColor: getLevelColor(session.level) }}
-                >
-                  {session.level}
-                </span>
-              </div>
-            )}
-            
-            {session.teachers && session.teachers.length > 0 && (
-              <div className="detail-row">
-                <strong>Teachers:</strong> {session.teachers.join(' and ')}
-              </div>
-            )}
-            
+            {/* Description - Most Important */}
             {session.description && session.description !== "" && (
-              <div className="detail-row">
-                <strong>Description:</strong>
-                <p className="description-text">{session.description}</p>
+              <div className="modal-description-section">
+                <h4>About This Workshop</h4>
+                <p className="modal-description-text">{session.description}</p>
               </div>
             )}
             
-            {!isSimplified && !isPhotoOnly && (
-              <div className="detail-row">
-                <strong>Prerequisites:</strong>
-                <p className="prereqs-text">
-                  {session.prereqs && session.prereqs !== "" && session.prereqs !== "TBD" ? session.prereqs : "None"}
-                </p>
+            {/* Workshop Details Grid */}
+            <div className="modal-details-grid">
+              
+              {/* Level */}
+              {!isSimplified && (
+                <div className="modal-detail-card">
+                  <h5>Level</h5>
+                  <span 
+                    className="modal-level-badge" 
+                    style={{ backgroundColor: getLevelColor(session.level) }}
+                  >
+                    {session.level}
+                  </span>
+                </div>
+              )}
+              
+              {/* Duration */}
+              <div className="modal-detail-card">
+                <h5>Duration</h5>
+                <span className="modal-duration">{Math.round(getDuration(session.start, session.end))} minutes</span>
               </div>
-            )}
+              
+              {/* Prerequisites */}
+              {!isSimplified && !isPhotoOnly && (
+                <div className="modal-detail-card modal-prereqs-card">
+                  <h5>Prerequisites</h5>
+                  <span className="modal-prereqs">
+                    {session.prereqs && session.prereqs !== "" && session.prereqs !== "TBD" ? session.prereqs : "None"}
+                  </span>
+                </div>
+              )}
+              
+            </div>
             
-            <div className="detail-row">
-              <strong>Styles:</strong>
-              <div className="styles-list">
+            {/* Workshop Types/Styles */}
+            <div className="modal-styles-section">
+              <h4>Workshop Types</h4>
+              <div className="modal-styles-list">
                 {session.styles.map((style, index) => (
-                  <span key={index} className="style-tag">{style}</span>
+                  <span key={index} className="modal-style-tag">
+                    {style}
+                  </span>
                 ))}
               </div>
             </div>
+            
           </div>
         </div>
       </div>
@@ -448,6 +538,8 @@ const FilterBar = ({
   availableStyles,
   availableTeachers
 }) => {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  
   const clearAllFilters = () => {
     setLevelFilter('');
     setStyleFilter('');
@@ -458,7 +550,21 @@ const FilterBar = ({
   const hasActiveFilters = levelFilter || styleFilter || searchFilter || teacherFilter;
 
   return (
-    <div className="filter-bar">
+    <div className="filter-container">
+      {/* Mobile: Collapsible filter toggle */}
+      <div className="mobile-filter-toggle">
+        <button 
+          className="filters-toggle-btn"
+          onClick={() => setFiltersOpen(!filtersOpen)}
+        >
+          <span>Filters</span>
+          {hasActiveFilters && <span className="active-indicator">●</span>}
+          <span className={`toggle-arrow ${filtersOpen ? 'open' : ''}`}>▼</span>
+        </button>
+      </div>
+
+      {/* Filter content - collapsible on mobile */}
+      <div className={`filter-bar ${filtersOpen ? 'mobile-open' : ''}`}>
       <div className="filter-group">
         <label>Search:</label>
         <input
@@ -522,6 +628,7 @@ const FilterBar = ({
         </button>
       </div>
     </div>
+  </div>
   );
 };
 
@@ -542,51 +649,86 @@ const ScheduleTabs = ({ days, activeDay, setActiveDay }) => {
 };
 
 export default function Home() {
+  // All useState hooks first
+  const [sessions, setSessions] = useState(sessionsData); // Start with local data
+  const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState('local');
   const [levelFilter, setLevelFilter] = useState('');
   const [styleFilter, setStyleFilter] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
   const [teacherFilter, setTeacherFilter] = useState('');
   const [selectedSession, setSelectedSession] = useState(null);
-  
-  // Group sessions by day and get available days
-  const sessionsByDay = useMemo(() => groupByDay(sessionsData), []);
-  const availableDays = useMemo(() => ['All Days', ...sortDays(Object.keys(sessionsByDay))], [sessionsByDay]);
   const [activeDay, setActiveDay] = useState('All Days');
+
+  // All useEffect hooks
+  useEffect(() => {
+    async function loadSessions() {
+      try {
+        console.log('🔄 Attempting to load from Google Sheets...');
+        const googleSheetsSessions = await fetchSessionsFromGoogleSheets();
+        if (googleSheetsSessions && googleSheetsSessions.length > 0) {
+          setSessions(googleSheetsSessions);
+          setDataSource('google-sheets');
+          console.log('✅ Loaded data from Google Sheets:', googleSheetsSessions.length, 'sessions');
+        } else {
+          console.log('📄 Falling back to local JSON data');
+          setSessions(sessionsData);
+          setDataSource('local');
+        }
+      } catch (error) {
+        console.error('❌ Error loading sessions:', error);
+        console.log('📄 Using local JSON data as fallback');
+        setSessions(sessionsData);
+        setDataSource('local');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSessions();
+  }, []);
   
-  // Get unique levels, styles, and teachers for filters
+  // All useMemo hooks
+  const sessionsByDay = useMemo(() => groupByDay(sessions), [sessions]);
+  const availableDays = useMemo(() => {
+    const dayOrder = ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const foundDays = Object.keys(sessionsByDay).filter(day => day); // Remove empty days
+    const sortedDays = foundDays.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+    return ['All Days', ...sortedDays];
+  }, [sessionsByDay]);
+  
   const availableLevels = useMemo(() => 
-    [...new Set(sessionsData.map(session => session.level))]
+    [...new Set(sessions.map(session => session.level))]
       .filter(level => level !== "All Levels") // Remove "All Levels" from data
-      .sort(), []
+      .sort(), [sessions]
   );
   
   const availableStyles = useMemo(() => 
-    [...new Set(sessionsData.flatMap(session => session.styles))].sort(), []
+    [...new Set(sessions.flatMap(session => session.styles))].sort(), [sessions]
   );
   
   const availableTeachers = useMemo(() => 
-    [...new Set(sessionsData.flatMap(session => session.teachers))].filter(teacher => teacher).sort(), []
+    [...new Set(sessions.flatMap(session => session.teachers))].filter(teacher => teacher).sort(), [sessions]
   );
-  
-  // Filter sessions for active day
+
   const filteredSessions = useMemo(() => {
-    let sessions = activeDay === 'All Days' ? sessionsData : (sessionsByDay[activeDay] || []);
+    let sessionsToFilter = activeDay === 'All Days' ? sessions : (sessionsByDay[activeDay] || []);
     
     if (levelFilter) {
-      sessions = sessions.filter(session => session.level === levelFilter);
+      sessionsToFilter = sessionsToFilter.filter(session => session.level === levelFilter);
     }
     
     if (styleFilter) {
-      sessions = sessions.filter(session => session.styles.includes(styleFilter));
+      sessionsToFilter = sessionsToFilter.filter(session => session.styles.includes(styleFilter));
     }
     
     if (teacherFilter) {
-      sessions = sessions.filter(session => session.teachers.includes(teacherFilter));
+      sessionsToFilter = sessionsToFilter.filter(session => session.teachers.includes(teacherFilter));
     }
     
     if (searchFilter) {
       const searchLower = searchFilter.toLowerCase();
-      sessions = sessions.filter(session =>
+      sessionsToFilter = sessionsToFilter.filter(session =>
         session.title.toLowerCase().includes(searchLower) ||
         session.description.toLowerCase().includes(searchLower) ||
         session.teachers.some(teacher => teacher.toLowerCase().includes(searchLower)) ||
@@ -595,7 +737,7 @@ export default function Home() {
     }
     
     // Sort sessions by day and then by start time
-    return sessions.sort((a, b) => {
+    return sessionsToFilter.sort((a, b) => {
       if (activeDay === 'All Days') {
         const dayOrder = ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const dayComparison = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
@@ -603,7 +745,22 @@ export default function Home() {
       }
       return a.start.localeCompare(b.start);
     });
-  }, [sessionsByDay, activeDay, levelFilter, styleFilter, teacherFilter, searchFilter]);
+  }, [sessions, sessionsByDay, activeDay, levelFilter, styleFilter, teacherFilter, searchFilter]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-blue-600 font-medium">Loading MAC 2025 Schedule...</p>
+          <p className="text-sm text-blue-500 mt-2">
+            {dataSource === 'google-sheets' ? 'Fetching latest updates...' : 'Loading schedule...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="schedule-container">
@@ -660,61 +817,59 @@ export default function Home() {
 
       {/* Session Grid */}
       {activeDay === 'All Days' ? (
-        // Show grouped by day when viewing all
-        Object.entries(sessionsByDay).map(([day, daySessions]) => {
-          const filteredDaySessions = daySessions.filter(session => {
-            if (levelFilter && session.level !== levelFilter) return false;
-            if (styleFilter && !session.styles.includes(styleFilter)) return false;
-            if (teacherFilter && !session.teachers.includes(teacherFilter)) return false;
-            if (searchFilter) {
-              const searchLower = searchFilter.toLowerCase();
-              return session.title.toLowerCase().includes(searchLower) ||
-                     session.description.toLowerCase().includes(searchLower) ||
-                     session.teachers.some(teacher => teacher.toLowerCase().includes(searchLower)) ||
-                     session.styles.some(style => style.toLowerCase().includes(searchLower));
-            }
-            return true;
-          }).sort((a, b) => a.start.localeCompare(b.start));
+        // Show grouped by day when viewing all - in chronological order
+        (() => {
+          const dayOrder = ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+          return dayOrder.filter(day => sessionsByDay[day] && sessionsByDay[day].length > 0).map(day => {
+            const daySessions = sessionsByDay[day];
+            const filteredDaySessions = daySessions.filter(session => {
+              if (levelFilter && session.level !== levelFilter) return false;
+              if (styleFilter && !session.styles.includes(styleFilter)) return false;
+              if (teacherFilter && !session.teachers.includes(teacherFilter)) return false;
+              if (searchFilter) {
+                const searchLower = searchFilter.toLowerCase();
+                return session.title.toLowerCase().includes(searchLower) ||
+                       session.description.toLowerCase().includes(searchLower) ||
+                       session.teachers.some(teacher => teacher.toLowerCase().includes(searchLower)) ||
+                       session.styles.some(style => style.toLowerCase().includes(searchLower));
+              }
+              return true;
+            }).sort((a, b) => a.start.localeCompare(b.start));
 
-          if (filteredDaySessions.length === 0) return null;
+            if (filteredDaySessions.length === 0) return null;
 
-          return (
-            <div key={day} className="day-section">
-              <h2 className="day-header">{day}</h2>
-              <div className="sessions-grid">
-                {filteredDaySessions.map(session => (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    onClick={setSelectedSession}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })
-      ) : (
-        // Show structured by time slots for individual days
-        <div className="day-content">
-          {(() => {
-            const timeSlots = groupByTimeSlots(filteredSessions);
-            const sortedTimeSlots = Object.keys(timeSlots).sort();
-            
-            return sortedTimeSlots.map(timeSlot => (
-              <div key={timeSlot} className="time-slot">
-                <h3 className="time-header">{timeSlot}</h3>
+            return (
+              <div key={day} className="day-section">
+                <h2 className="day-header">{day}</h2>
                 <div className="sessions-grid">
-                  {timeSlots[timeSlot].map(session => (
+                  {filteredDaySessions.map(session => (
                     <SessionCard
                       key={session.id}
                       session={session}
                       onClick={setSelectedSession}
+                      onStyleClick={setStyleFilter}
                     />
                   ))}
                 </div>
               </div>
-            ));
-          })()}
+            );
+          });
+        })()
+      ) : (
+        // Show individual day sessions  
+        <div className="day-content">
+          <div className="sessions-grid">
+            {filteredSessions
+              .sort((a, b) => a.start.localeCompare(b.start))
+              .map(session => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  onClick={setSelectedSession}
+                  onStyleClick={setStyleFilter}
+                />
+              ))}
+          </div>
           
           {filteredSessions.length === 0 && (
             <div className="no-sessions">

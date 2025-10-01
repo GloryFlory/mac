@@ -182,9 +182,50 @@ body {
 }
 
 /* Filter Bar */
-.filter-bar {
+.filter-container {
   max-width: 1200px;
   margin: 0 auto 2rem;
+}
+
+/* Mobile filter toggle button */
+.mobile-filter-toggle {
+  display: none; /* Hidden on desktop */
+}
+
+.filters-toggle-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin: 0 0 1rem 0; /* Remove horizontal margin to prevent spillover */
+  font-weight: 600;
+  color: var(--deep-navy);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.filters-toggle-btn:hover {
+  background: #f8fafc;
+}
+
+.active-indicator {
+  color: var(--primary-blue);
+  margin-left: 0.5rem;
+}
+
+.toggle-arrow {
+  transition: transform 0.2s ease;
+}
+
+.toggle-arrow.open {
+  transform: rotate(180deg);
+}
+
+.filter-bar {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr auto;
   gap: 1rem;
@@ -236,6 +277,11 @@ body {
   transition: all 0.2s ease;
   white-space: nowrap;
   align-self: end;
+  height: 44px; /* Match the height of select elements */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.75rem; /* Offset for label height to align with inputs */
 }
 
 .clear-filters-btn:hover:not(:disabled) {
@@ -308,7 +354,7 @@ body {
 .session-card {
   background: white;
   border-radius: 16px;
-  padding: 2rem;
+  padding: 1.25rem;
   box-shadow: 0 4px 20px var(--shadow);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -318,7 +364,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: var(--card-min-height, 280px);
+  min-height: var(--card-min-height, 220px);
 }
 
 /* Simplified cards - same background as regular cards */
@@ -339,7 +385,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   gap: 1rem;
 }
 
@@ -370,27 +416,27 @@ body {
 .session-content {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
   flex: 1;
 }
 
 /* Duration-based card heights and styling */
 .session-card.size-small {
-  --card-min-height: 240px;
+  --card-min-height: 180px;
   opacity: 0.95;
 }
 
 .session-card.size-medium {
-  --card-min-height: 280px;
+  --card-min-height: 220px;
 }
 
 .session-card.size-large {
-  --card-min-height: 320px;
+  --card-min-height: 260px;
   border-left: 5px solid var(--coral-accent);
 }
 
 .session-card.size-xl {
-  --card-min-height: 360px;
+  --card-min-height: 300px;
   border-left: 6px solid var(--primary-blue);
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
 }
@@ -712,6 +758,18 @@ body {
   transition: all 0.2s ease;
 }
 
+/* Clickable style tags */
+.style-tag.clickable {
+  cursor: pointer;
+}
+
+.style-tag.clickable:hover {
+  background: var(--primary-blue);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 119, 182, 0.3);
+}
+
 .style-tag:hover {
   background: var(--secondary-blue);
   color: white;
@@ -741,6 +799,298 @@ body {
   margin: 0;
 }
 
+/* Simple grid layout with workshop highlighting */
+.sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+/* Workshop highlighting - make workshops more prominent */
+.session-card.workshop-highlight {
+  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+  border: 2px solid #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(0);
+  transition: all 0.2s ease;
+}
+
+.session-card.workshop-highlight:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+}
+
+/* Non-workshop cards - more subdued */
+.session-card.non-workshop {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  opacity: 0.85;
+}
+
+/* Simultaneous workshop grouping */
+.simultaneous-workshops {
+  grid-column: 1 / -1; /* Span full width */
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 0.5rem 0;
+}
+
+.workshop-time-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.workshop-time {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+
+.workshop-count {
+  font-size: 0.875rem;
+  color: #3730a3;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 1rem;
+}
+
+.workshop-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Mobile responsiveness for workshop groups */
+@media (max-width: 768px) {
+  .simultaneous-workshops {
+    grid-column: 1;
+  }
+  
+  .workshop-group {
+    grid-template-columns: 1fr;
+  }
+  
+  .workshop-time-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  /* Compact simplified cards on mobile */
+  .session-card.simple-card {
+    min-height: auto;
+    padding: 0.75rem;
+  }
+  
+  .session-card.simple-card .session-content {
+    gap: 0.25rem;
+  }
+  
+  .session-card.simple-card .session-time {
+    font-size: 0.75rem;
+    margin-bottom: 0.125rem;
+  }
+  
+  .session-card.simple-card .session-teachers {
+    font-size: 0.75rem;
+    margin-bottom: 0.125rem;
+  }
+  
+  .session-card.simple-card .session-level,
+  .session-card.simple-card .session-prerequisites {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+  
+  /* Mobile adjustments - revert to simpler working approach */
+  .level-and-tags {
+    margin-right: 60px; /* Space for photo */
+  }
+  
+  .session-prerequisites {
+    margin-right: 60px; /* Space for photo */
+  }
+  
+  .session-room {
+    margin-right: 60px; /* Space for photo */
+  }
+  
+  /* Simple mobile photo styling - use same as desktop */
+  @media (max-width: 768px) {
+    /* Mobile: reduce prereqs width to prevent overlap with photo */
+    .prereqs-compact {
+      width: 70% !important;
+      margin-right: 0 !important;
+    }
+    
+    .level-and-tags {
+      margin-right: 90px !important; /* Less margin needed on mobile */
+    }
+    
+    .session-card {
+      position: relative; /* Ensure positioning context */
+    }
+  }
+}
+
+/* Density-based grouping - add extra margin to first card of each time period */
+.session-card.first-of-period {
+  margin-top: 1.5rem;
+}
+
+/* Exception: don't add margin to the very first card */
+.session-card.first-of-period:first-child {
+  margin-top: 0;
+}
+
+/* Subtle time-based visual cues */
+.time-early-morning {
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+  border-left: 2px solid rgba(59, 130, 246, 0.3);
+}
+
+.time-morning {
+  box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1);
+  border-left: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.time-lunch-time {
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.1);
+  border-left: 2px solid rgba(245, 158, 11, 0.3);
+}
+
+.time-afternoon {
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.1);
+  border-left: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.time-evening {
+  box-shadow: 0 1px 3px rgba(139, 92, 246, 0.1);
+  border-left: 2px solid rgba(139, 92, 246, 0.3);
+}
+
+.time-night {
+  box-shadow: 0 1px 3px rgba(75, 85, 99, 0.1);
+  border-left: 2px solid rgba(75, 85, 99, 0.3);
+}
+
+/* Compact layout for session cards */
+.teachers-names-compact {
+  margin: 0;
+}
+
+.teachers-names-compact .teacher-link {
+  color: var(--primary-blue);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.teachers-names-compact .teacher-link:hover {
+  color: var(--secondary-blue);
+  text-decoration: underline;
+}
+
+.teacher-photo-bottom-right {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 10;
+  border-radius: 50%;
+  overflow: hidden; /* Ensure photo content stays within bounds */
+}
+
+/* Mobile inline photo for full cards */
+.teacher-photo-mobile-inline {
+  display: none; /* No longer used - keeping for backward compatibility */
+}
+
+/* Ensure all session cards are positioned and contained properly */
+.session-card {
+  position: relative;
+  overflow: hidden; /* Prevent content spillover */
+}
+
+.level-and-tags {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-right: 130px; /* Further increased space for teacher photo */
+  margin-bottom: 0.5rem; /* Add bottom margin to prevent overlap */
+  line-height: 1.2;
+}
+
+/* Ensure prerequisites and tags don't overlap with photo - limit width to 75% */
+/* Prerequisites styling consolidated below to avoid conflicts */
+
+/* Better spacing for multi-line titles */
+.session-title {
+  margin-bottom: 0.75rem; /* Increased from default to provide more space */
+  line-height: 1.3;
+}
+
+/* Room positioning - ensure it doesn't clash with photo */
+.session-room {
+  margin-right: 130px;
+  margin-bottom: 0.25rem;
+}
+
+.level-badge-compact {
+  padding: 0.25rem 0.5rem;
+  border-radius: 10px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.styles-compact {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.style-tag-compact {
+  background: var(--light-blue);
+  color: var(--primary-blue);
+  padding: 0.25rem 0.5rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.prereqs-compact {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.4; /* Improved line height for better readability */
+  margin-right: 130px; /* Consistent space for teacher photo */
+  margin-bottom: 0.5rem;
+  width: 70%; /* Reduced width to ensure no overlap with photo */
+  word-wrap: break-word; /* Allow long words to break */
+  overflow-wrap: break-word; /* Modern browsers */
+  hyphens: auto; /* Add hyphenation for better breaks */
+}
+
+.prereqs-compact strong {
+  color: var(--deep-navy);
+  font-weight: 600;
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -748,71 +1098,478 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(11, 31, 50, 0.8);
+  background: rgba(11, 31, 50, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
   background: white;
-  border-radius: 20px;
-  max-width: 600px;
+  border-radius: 24px;
+  max-width: 700px;
   width: 100%;
-  max-height: 90vh;
+  max-height: 95vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
   position: relative;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
   background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
   color: white;
-  padding: 1.5rem;
-  border-radius: 20px 20px 0 0;
+  padding: 2rem;
+  border-radius: 24px 24px 0 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  position: relative;
+}
+
+.modal-title-section {
+  flex: 1;
+  padding-right: 1rem;
 }
 
 .modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 1.75rem;
   font-weight: 700;
+  line-height: 1.3;
+}
+
+.modal-quick-info {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.modal-time, .modal-day, .modal-location {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.4rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
 }
 
 .close-button {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.75rem;
   border-radius: 50%;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
 }
 
 .close-button:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
 }
 
 .modal-body {
-  padding: 2rem;
+  padding: 2.5rem;
 }
 
 .session-details {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 2rem;
 }
 
 .detail-row {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+}
+
+.detail-row strong {
+  color: var(--deep-navy);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Teachers Section */
+.teachers-section {
+  background: linear-gradient(135deg, rgba(0, 180, 216, 0.05), rgba(0, 119, 182, 0.03));
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 180, 216, 0.1);
+}
+
+.teachers-grid {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.teacher-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.teacher-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.teacher-photo-modal {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.teacher-photo-modal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.teacher-initials-modal {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.teacher-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.teacher-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--deep-navy);
+}
+
+.teacher-bio-link {
+  color: var(--primary-blue);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.teacher-bio-link:hover {
+  color: var(--secondary-blue);
+  text-decoration: underline;
+}
+
+/* Level Section */
+.level-section {
+  background: rgba(241, 233, 218, 0.3);
+  padding: 1.5rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--sand-neutral);
+}
+
+.level-display {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.level-badge-modal-enhanced {
+  padding: 0.6rem 1.2rem;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.duration-info {
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--deep-navy);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Description Section */
+.description-section {
+  background: linear-gradient(135deg, rgba(0, 180, 216, 0.03), rgba(255, 255, 255, 0.5));
+  padding: 1.5rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--secondary-blue);
+}
+
+.description-text-enhanced {
+  background: white;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border-left: 3px solid var(--primary-blue);
+  line-height: 1.6;
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-dark);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Prerequisites Section */
+.prereqs-section {
+  background: rgba(255, 111, 97, 0.05);
+  padding: 1.5rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--coral-accent);
+}
+
+.prereqs-badge {
+  background: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 20px;
+  font-weight: 600;
+  color: var(--deep-navy);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  display: inline-block;
+}
+
+/* Styles Section */
+.styles-section {
+  background: linear-gradient(135deg, rgba(122, 74, 221, 0.05), rgba(255, 255, 255, 0.5));
+  padding: 1.5rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--accent-purple);
+}
+
+.styles-list-modal {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.style-tag-modal {
+  background: linear-gradient(135deg, var(--accent-purple), #9333ea);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(122, 74, 221, 0.3);
+}
+
+.style-tag-modal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(122, 74, 221, 0.4);
+}
+
+/* Teacher Photo Section - Full Width */
+.modal-teacher-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(0, 180, 216, 0.03), rgba(255, 255, 255, 0.5));
+  border-bottom: 1px solid rgba(0, 180, 216, 0.1);
+}
+
+.modal-teacher-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.modal-teacher-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-teacher-initials {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.modal-teacher-info {
+  flex: 1;
+}
+
+.modal-teacher-names {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--deep-navy);
+}
+
+.modal-teacher-link {
+  color: var(--primary-blue);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.modal-teacher-link:hover {
+  color: var(--secondary-blue);
+  text-decoration: underline;
+}
+
+/* Description Section - Highlighted */
+.modal-description-section {
+  background: linear-gradient(135deg, rgba(0, 180, 216, 0.05), rgba(255, 255, 255, 0.8));
+  padding: 2rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--primary-blue);
+}
+
+.modal-description-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--deep-navy);
+}
+
+.modal-description-text {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--text-dark);
+}
+
+/* Details Grid */
+.modal-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.modal-detail-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  border: 1px solid rgba(0, 180, 216, 0.1);
+}
+
+.modal-detail-card h5 {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-level-badge {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-duration {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--deep-navy);
+}
+
+.modal-prereqs-card {
+  grid-column: 1 / -1; /* Full width */
+  text-align: left;
+}
+
+.modal-prereqs {
+  font-size: 1rem;
+  color: var(--text-dark);
+  line-height: 1.5;
+}
+
+/* Styles Section */
+.modal-styles-section {
+  background: rgba(241, 233, 218, 0.3);
+  padding: 1.5rem;
+  border-radius: 16px;
+}
+
+.modal-styles-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--deep-navy);
+}
+
+.modal-styles-list {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.modal-style-tag {
+  background: white;
+  color: var(--deep-navy);
+  border: 2px solid var(--accent-purple);
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(122, 74, 221, 0.15);
+  transition: all 0.2s ease;
 }
 
 /* Flex row for time, day, location in modal */
@@ -1096,25 +1853,82 @@ body {
     margin: 0 1rem;
     margin-top: -1rem;
     margin-bottom: 2rem;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    flex-wrap: nowrap; /* Prevent wrapping */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scrollbar-width: none; /* Hide scrollbar on Firefox */
+    -ms-overflow-style: none; /* Hide scrollbar on IE */
+    /* Ensure all tabs are visible and scrollable */
+    white-space: nowrap;
+    display: flex;
+  }
+  
+  /* Hide scrollbar on Webkit browsers */
+  .schedule-tabs::-webkit-scrollbar {
+    display: none;
   }
   
   .tab {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+    flex: none !important; /* Force override flex: 1 to allow natural width */
+    flex-shrink: 0; /* Prevent tabs from shrinking */
+    min-width: 100px; /* Minimum width to ensure visibility */
+    white-space: nowrap; /* Prevent text wrapping */
+    display: inline-block; /* Ensure proper display */
+    width: auto !important; /* Override any fixed width */
+  }
+  
+  .filter-container {
+    margin: 0 0 1rem;
+    padding: 0 1rem; /* Add horizontal padding to container instead */
+  }
+  
+  /* Show mobile filter toggle */
+  .mobile-filter-toggle {
+    display: block !important;
   }
   
   .filter-bar {
+    display: none; /* Hidden by default on mobile */
     grid-template-columns: 1fr;
-    margin: 0 1rem 2rem;
-    gap: 1rem;
+    margin: 0 1rem 1rem;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Show filters when mobile-open class is added */
+  .filter-bar.mobile-open {
+    display: grid !important;
+  }
+  
+  .filter-group {
+    margin-bottom: 0; /* Remove extra margin */
+  }
+  
+  .filter-group label {
+    font-size: 0.875rem; /* Smaller labels */
+    margin-bottom: 0.25rem;
+  }
+  
+  .filter-select {
+    padding: 0.5rem; /* Reduced padding */
+    font-size: 0.875rem; /* Smaller text */
   }
   
   .clear-filters-btn {
     align-self: stretch;
+    padding: 0.5rem; /* Reduced padding */
+    font-size: 0.875rem; /* Smaller text */
   }
   
   .session-card {
-    padding: 1.5rem;
+    padding: 1rem;
+    position: relative; /* Ensure relative positioning for absolute photo */
+    padding-bottom: 3rem; /* Extra bottom padding for photo */
   }
   
   .session-header {
@@ -1130,24 +1944,109 @@ body {
     padding: 0 1rem 2rem;
   }
   
+  /* Mobile cards - simple styling */
   .session-card {
-    padding: 1.25rem;
+    padding: 1rem;
   }
   
   .session-title {
     font-size: 1.2rem;
   }
   
+  /* Enhanced Mobile Modal Styles */
   .modal-content {
-    margin: 1rem;
-    max-height: 85vh;
+    margin: 0.5rem;
+    max-height: 95vh;
+    border-radius: 20px;
   }
   
   .modal-header {
-    padding: 1.25rem;
+    padding: 1.5rem;
+    border-radius: 20px 20px 0 0;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.4rem;
+    line-height: 1.3;
+  }
+  
+  .modal-quick-info {
+    gap: 0.5rem;
+  }
+  
+  .modal-time, .modal-day, .modal-location {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  /* Mobile Teacher Section */
+  .modal-teacher-section {
+    padding: 1.5rem;
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .modal-teacher-photo {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .modal-teacher-names {
+    font-size: 1.2rem;
+  }
+  
+  .modal-teacher-link {
+    font-size: 0.9rem;
   }
   
   .modal-body {
     padding: 1.5rem;
+  }
+  
+  .session-details {
+    gap: 1.5rem;
+  }
+  
+  /* Mobile Description */
+  .modal-description-section {
+    padding: 1.5rem;
+  }
+  
+  .modal-description-section h4 {
+    font-size: 1.1rem;
+  }
+  
+  .modal-description-text {
+    font-size: 1rem;
+  }
+  
+  /* Mobile Details Grid */
+  .modal-details-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .modal-detail-card {
+    padding: 1rem;
+  }
+  
+  .modal-prereqs-card {
+    grid-column: 1;
+  }
+  
+  /* Mobile Styles Section */
+  .modal-styles-section {
+    padding: 1rem;
+  }
+  
+  .modal-styles-list {
+    gap: 0.5rem;
+  }
+  
+  .modal-style-tag {
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+    border-width: 1px;
   }
 }
