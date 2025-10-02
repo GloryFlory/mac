@@ -1,7 +1,8 @@
 'use client';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Fragment } from 'react';
 import sessionsData from '../data/sessions.json';
 import { fetchSessionsFromGoogleSheets } from '../utils/googleSheets';
+import { fetchBookingsFromGoogleSheets, syncBookingsToGoogleSheets } from '../utils/photoshootBookings';
 
 // Helper function to try different image extensions
 const getTeacherImageSrc = (teachers) => {
@@ -164,7 +165,7 @@ const sortDays = (days) => {
 };
 
   // SessionCard component with compact layout and workshop highlighting
-  const SessionCard = ({ session, onClick, onStyleClick }) => {
+  const SessionCard = ({ session, onClick, onStyleClick, setShowPhotoshootBooking }) => {
     const size = getSessionSize(session);
     
     // Use cardType from Google Sheets data, with fallback to old logic
@@ -211,6 +212,8 @@ const sortDays = (days) => {
   
   // Simplified card for meals, demos, and special sessions
   if (isSimplified) {
+    const isPhotoshoot = session.title.toLowerCase().includes('photoshoot') || session.title.toLowerCase().includes('photo shoot');
+    
     return (
       <div className={`session-card session-card-${size} simple-card ${workshopClass}`} onClick={() => onClick(session)}>
         <div className="session-header">
@@ -224,6 +227,13 @@ const sortDays = (days) => {
             <span className="time">{timeRange(session.start, session.end)}</span>
             <span className="location">{session.location}</span>
           </div>
+          
+                    {/* Photoshoot booking hint for main card */}
+          {isPhotoshoot && (
+            <div className="photoshoot-booking-hint">
+              <span className="booking-hint-text">📸 Open Details to Book</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -389,12 +399,14 @@ const sortDays = (days) => {
   );
 };
 
-const SessionModal = ({ session, onClose }) => {
+const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
   if (!session) return null;
 
   // Check if this is a simplified session (same logic as in SessionCard)
   const isMeal = session.title === 'Breakfast' || session.title === 'Lunch' || session.title === 'Dinner';
   const isDemo = session.title.includes('Demo') || session.title.includes('Warm Up');
+  const isPhotoshoot = session.title.toLowerCase().includes('photoshoot') || session.title.toLowerCase().includes('photo shoot');
+  
   const simplifiedSessions = [
     'Arrival & Registration',
     'Opening Circle and Ice breaker games',
@@ -464,6 +476,22 @@ const SessionModal = ({ session, onClose }) => {
         <div className="modal-body">
           <div className="session-details">
             
+            {/* Photoshoot Booking Section */}
+            {isPhotoshoot && (
+              <div className="photoshoot-booking-section">
+                <h4>📸 Book Your Photo Session</h4>
+                <p className="photoshoot-description">
+                  Join our professional photoshoot during Saturday's resting period! Please prepare your poses ahead of time and be respectful of others' time. Each session is exactly 3 minutes - make them count! 📷✨
+                </p>
+                <button 
+                  className="book-photoshoot-btn-main"
+                  onClick={() => setShowPhotoshootBooking(true)}
+                >
+                  Book Time Slot
+                </button>
+              </div>
+            )}
+            
             {/* Description - Most Important */}
             {session.description && session.description !== "" && (
               <div className="modal-description-section">
@@ -476,7 +504,7 @@ const SessionModal = ({ session, onClose }) => {
             <div className="modal-details-grid">
               
               {/* Level */}
-              {!isSimplified && (
+              {!isSimplified && !isPhotoshoot && (
                 <div className="modal-detail-card">
                   <h5>Level</h5>
                   <span 
@@ -495,7 +523,7 @@ const SessionModal = ({ session, onClose }) => {
               </div>
               
               {/* Prerequisites */}
-              {!isSimplified && !isPhotoOnly && (
+              {!isSimplified && !isPhotoOnly && !isPhotoshoot && (
                 <div className="modal-detail-card modal-prereqs-card">
                   <h5>Prerequisites</h5>
                   <span className="modal-prereqs">
@@ -507,16 +535,18 @@ const SessionModal = ({ session, onClose }) => {
             </div>
             
             {/* Workshop Types/Styles */}
-            <div className="modal-styles-section">
-              <h4>Workshop Types</h4>
-              <div className="modal-styles-list">
-                {session.styles.map((style, index) => (
-                  <span key={index} className="modal-style-tag">
-                    {style}
-                  </span>
-                ))}
+            {!isPhotoshoot && (
+              <div className="modal-styles-section">
+                <h4>Workshop Types</h4>
+                <div className="modal-styles-list">
+                  {session.styles.map((style, index) => (
+                    <span key={index} className="modal-style-tag">
+                      {style}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             
           </div>
         </div>
@@ -648,6 +678,275 @@ const ScheduleTabs = ({ days, activeDay, setActiveDay }) => {
   );
 };
 
+// Photoshoot Booking Modal Component
+const PhotoshootBookingModal = ({ onClose, bookings, setBookings }) => {
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [names, setNames] = useState(['']);
+  
+  // Generate a unique device ID for this browser/device
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('mac-photoshoot-device-id');
+    if (!deviceId) {
+      deviceId = 'device-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('mac-photoshoot-device-id', deviceId);
+    }
+    return deviceId;
+  };
+  
+  // Get user's bookings from localStorage
+  const getUserBookings = () => {
+    const deviceId = getDeviceId();
+    const userBookings = localStorage.getItem(`mac-photoshoot-bookings-${deviceId}`);
+    return userBookings ? JSON.parse(userBookings) : [];
+  };
+  
+  // Save user's booking to localStorage
+  const saveUserBooking = (timeSlot, names) => {
+    const deviceId = getDeviceId();
+    const userBookings = getUserBookings();
+    if (!userBookings.includes(timeSlot)) {
+      userBookings.push(timeSlot);
+      localStorage.setItem(`mac-photoshoot-bookings-${deviceId}`, JSON.stringify(userBookings));
+    }
+  };
+  
+  // Remove user's booking from localStorage
+  const removeUserBooking = (timeSlot) => {
+    const deviceId = getDeviceId();
+    const userBookings = getUserBookings();
+    const updatedBookings = userBookings.filter(slot => slot !== timeSlot);
+    localStorage.setItem(`mac-photoshoot-bookings-${deviceId}`, JSON.stringify(updatedBookings));
+  };
+  
+  // Check if current user can cancel a booking
+  const canCancelBooking = (timeSlot) => {
+    const userBookings = getUserBookings();
+    return userBookings.includes(timeSlot);
+  };
+  
+  // Generate time slots (2 hours, 3-minute intervals = 40 slots)
+  const generateTimeSlots = () => {
+    const slots = [];
+    const startTime = 14 * 60; // 14:00 (2PM) in minutes
+    
+    for (let i = 0; i < 40; i++) {
+      const timeInMinutes = startTime + (i * 3);
+      const hours = Math.floor(timeInMinutes / 60);
+      const minutes = timeInMinutes % 60;
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      slots.push(timeStr);
+    }
+    return slots;
+  };
+  
+  const timeSlots = generateTimeSlots();
+  
+  const handleNameChange = (index, value) => {
+    const newNames = [...names];
+    newNames[index] = value;
+    setNames(newNames);
+  };
+  
+  const addNameField = () => {
+    if (names.length < 2) {
+      setNames([...names, '']);
+    }
+  };
+  
+  const removeNameField = (index) => {
+    if (names.length > 1) {
+      const newNames = names.filter((_, i) => i !== index);
+      setNames(newNames);
+    }
+  };
+  
+  const handleBookSlot = async () => {
+    if (!selectedSlot) return;
+    
+    const validNames = names.filter(name => name.trim() !== '');
+    if (validNames.length === 0) return;
+    
+    const newBookings = { ...bookings };
+    newBookings[selectedSlot] = validNames;
+    setBookings(newBookings);
+    
+    // Save to user's localStorage
+    saveUserBooking(selectedSlot, validNames);
+    
+    // Reset form immediately
+    setSelectedSlot(null);
+    setNames(['']);
+    
+    // Show immediate success message
+    alert(`✅ Booked ${selectedSlot} for: ${validNames.join(', ')}\n📊 Syncing to Google Sheets...`);
+    
+    // Try to sync to Google Sheets in background
+    syncBookingsToGoogleSheets(newBookings).then(synced => {
+      console.log(synced ? '✅ Google Sheets sync completed' : '⚠️ Google Sheets sync failed or not configured');
+    }).catch(error => {
+      console.error('❌ Google Sheets sync error:', error);
+    });
+  };
+  
+  const handleEditBooking = (timeSlot) => {
+    // Only allow editing if this user made the booking
+    if (!canCancelBooking(timeSlot)) {
+      alert('❌ You can only edit bookings that you made from this device.');
+      return;
+    }
+    
+    // Load the existing booking into the form
+    setSelectedSlot(timeSlot);
+    setNames([...bookings[timeSlot]]);
+  };
+  
+  const handleCancelBooking = (timeSlot) => {
+    // Only allow cancellation if this user made the booking
+    if (!canCancelBooking(timeSlot)) {
+      alert('❌ You can only cancel bookings that you made from this device.');
+      return;
+    }
+    
+    const newBookings = { ...bookings };
+    delete newBookings[timeSlot];
+    setBookings(newBookings);
+    
+    // Remove from user's localStorage
+    removeUserBooking(timeSlot);
+    
+    // Show immediate success message
+    alert(`🗑️ Cancelled booking for ${timeSlot}\n📊 Syncing to Google Sheets...`);
+    
+    // Try to sync to Google Sheets in background
+    syncBookingsToGoogleSheets(newBookings).then(synced => {
+      console.log(synced ? '✅ Google Sheets sync completed' : '⚠️ Google Sheets sync failed or not configured');
+    }).catch(error => {
+      console.error('❌ Google Sheets sync error:', error);
+    });
+  };
+  
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="photoshoot-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title-section">
+            <h2>📸 Book Your Photoshoot Slot</h2>
+            <p>Saturday 14:00-16:00 | 3-minute sessions</p>
+          </div>
+          <button className="close-button" onClick={onClose}>&times;</button>
+        </div>
+        
+        <div className="photoshoot-modal-body">
+          {/* Time Slots Grid */}
+          <div className="time-slots-section">
+            <h3>Select Your Time Slot</h3>
+            <div className="time-slots-grid">
+              {timeSlots.map(slot => {
+                const isBooked = bookings[slot];
+                const isSelected = selectedSlot === slot;
+                
+                return (
+                  <div
+                    key={slot}
+                    className={`time-slot ${isBooked ? 'booked' : 'available'} ${isSelected ? 'selected' : ''} ${isBooked && canCancelBooking(slot) ? 'user-booking' : ''}`}
+                    onClick={() => {
+                      if (!isBooked) {
+                        setSelectedSlot(slot);
+                      } else if (canCancelBooking(slot)) {
+                        // Show edit options for user's own booking
+                        handleEditBooking(slot);
+                      }
+                    }}
+                  >
+                    <div className="slot-time">{slot}</div>
+                    {isBooked ? (
+                      <div className="slot-booking">
+                        <div className="booked-names">{isBooked.join(', ')}</div>
+                        {canCancelBooking(slot) && (
+                          <div className="user-booking-indicator">✏️ Click to edit</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="slot-status">Available</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Booking Form - Fixed position overlay */}
+          {selectedSlot && (
+            <div className="booking-form-overlay">
+              <div className="booking-form-card">
+                <h4>{bookings[selectedSlot] ? `Edit ${selectedSlot}` : `Book ${selectedSlot}`}</h4>
+                <div className="names-input-section">
+                  {names.map((name, index) => (
+                    <div key={index} className="name-input-row">
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => handleNameChange(index, e.target.value)}
+                        placeholder={`Name ${index + 1}`}
+                        className="name-input"
+                        maxLength={30}
+                      />
+                      {names.length > 1 && (
+                        <button 
+                          className="remove-name-btn"
+                          onClick={() => removeNameField(index)}
+                        >
+                          ✗
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {names.length < 2 && (
+                    <button className="add-name-btn" onClick={addNameField}>
+                      + Add Person (Max 2)
+                    </button>
+                  )}
+                  
+                  <div className="booking-actions">
+                    <button 
+                      className="book-slot-btn"
+                      onClick={handleBookSlot}
+                      disabled={names.filter(n => n.trim()).length === 0}
+                    >
+                      {bookings[selectedSlot] ? 'Update Booking' : 'Book This Slot'}
+                    </button>
+                    {bookings[selectedSlot] && (
+                      <button 
+                        className="delete-booking-btn"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete your booking for ${selectedSlot}?`)) {
+                            handleCancelBooking(selectedSlot);
+                            setSelectedSlot(null);
+                            setNames(['']);
+                          }
+                        }}
+                      >
+                        🗑️ Delete Booking
+                      </button>
+                    )}
+                    <button 
+                      className="cancel-selection-btn"
+                      onClick={() => setSelectedSlot(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Home() {
   // All useState hooks first
   const [sessions, setSessions] = useState(sessionsData); // Start with local data
@@ -659,6 +958,10 @@ export default function Home() {
   const [teacherFilter, setTeacherFilter] = useState('');
   const [selectedSession, setSelectedSession] = useState(null);
   const [activeDay, setActiveDay] = useState('All Days');
+  
+  // Photoshoot booking state
+  const [showPhotoshootBooking, setShowPhotoshootBooking] = useState(false);
+  const [photoshootBookings, setPhotoshootBookings] = useState({});
 
   // All useEffect hooks
   useEffect(() => {
@@ -686,6 +989,29 @@ export default function Home() {
     }
 
     loadSessions();
+  }, []);
+
+  // Load photoshoot bookings from Google Sheets
+  useEffect(() => {
+    async function loadBookings() {
+      try {
+        console.log('📊 Loading photoshoot bookings from Google Sheets...');
+        const googleSheetsBookings = await fetchBookingsFromGoogleSheets();
+        if (googleSheetsBookings) {
+          setPhotoshootBookings(googleSheetsBookings);
+          console.log('✅ Loaded bookings from Google Sheets:', Object.keys(googleSheetsBookings).length, 'slots booked');
+        } else {
+          console.log('📄 No bookings found, starting with empty schedule');
+          setPhotoshootBookings({});
+        }
+      } catch (error) {
+        console.error('❌ Error loading bookings from Google Sheets:', error);
+        console.log('📄 Starting with empty booking schedule');
+        setPhotoshootBookings({});
+      }
+    }
+
+    loadBookings();
   }, []);
   
   // All useMemo hooks
@@ -848,6 +1174,7 @@ export default function Home() {
                       session={session}
                       onClick={setSelectedSession}
                       onStyleClick={setStyleFilter}
+                      setShowPhotoshootBooking={setShowPhotoshootBooking}
                     />
                   ))}
                 </div>
@@ -867,6 +1194,7 @@ export default function Home() {
                   session={session}
                   onClick={setSelectedSession}
                   onStyleClick={setStyleFilter}
+                  setShowPhotoshootBooking={setShowPhotoshootBooking}
                 />
               ))}
           </div>
@@ -882,8 +1210,18 @@ export default function Home() {
       {/* Session Modal */}
       <SessionModal 
         session={selectedSession} 
-        onClose={() => setSelectedSession(null)} 
+        onClose={() => setSelectedSession(null)}
+        setShowPhotoshootBooking={setShowPhotoshootBooking}
       />
+      
+      {/* Photoshoot Booking Modal */}
+      {showPhotoshootBooking && (
+        <PhotoshootBookingModal
+          onClose={() => setShowPhotoshootBooking(false)}
+          bookings={photoshootBookings}
+          setBookings={setPhotoshootBookings}
+        />
+      )}
       
       </div> {/* Close main-content-frame */}
     </div>
