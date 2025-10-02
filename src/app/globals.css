@@ -1494,6 +1494,7 @@ body {
   gap: 1.5rem;
 }
 
+/* Ensure consistent sizing for cards */
 .modal-detail-card {
   background: white;
   padding: 1.5rem;
@@ -1501,6 +1502,7 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   text-align: center;
   border: 1px solid rgba(0, 180, 216, 0.1);
+  min-width: 200px; /* Ensure minimum width consistency */
 }
 
 .modal-detail-card h5 {
@@ -1530,8 +1532,8 @@ body {
 }
 
 .modal-prereqs-card {
-  grid-column: 1 / -1; /* Full width */
   text-align: left;
+  /* Removed grid-column: 1 / -1 to allow normal grid flow */
 }
 
 .modal-prereqs {

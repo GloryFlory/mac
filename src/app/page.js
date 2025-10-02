@@ -231,7 +231,7 @@ const sortDays = (days) => {
                     {/* Photoshoot booking hint for main card */}
           {isPhotoshoot && (
             <div className="photoshoot-booking-hint">
-              <span className="booking-hint-text">📸 Open Details to Book</span>
+              <span className="booking-hint-text">Open Details to Book</span>
             </div>
           )}
         </div>
@@ -516,14 +516,15 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
                 </div>
               )}
               
-              {/* Duration */}
+              {/* Duration - Show for all sessions */}
               <div className="modal-detail-card">
                 <h5>Duration</h5>
                 <span className="modal-duration">{Math.round(getDuration(session.start, session.end))} minutes</span>
               </div>
               
-              {/* Prerequisites */}
-              {!isSimplified && !isPhotoOnly && !isPhotoshoot && (
+              {/* Prerequisites - Show for simplified sessions AND complex sessions (but not photo-only or photoshoot) */}
+              {((isSimplified && session.prereqs && session.prereqs !== "" && session.prereqs !== "TBD") || 
+                (!isSimplified && !isPhotoOnly && !isPhotoshoot)) && (
                 <div className="modal-detail-card modal-prereqs-card">
                   <h5>Prerequisites</h5>
                   <span className="modal-prereqs">
@@ -534,8 +535,8 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
               
             </div>
             
-            {/* Workshop Types/Styles */}
-            {!isPhotoshoot && (
+            {/* Workshop Types/Styles - Hide for simplified sessions and photoshoot */}
+            {!isPhotoshoot && !isSimplified && (
               <div className="modal-styles-section">
                 <h4>Workshop Types</h4>
                 <div className="modal-styles-list">
