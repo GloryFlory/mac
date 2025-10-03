@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect, Fragment } from 'react';
 import sessionsData from '../data/sessions.json';
 import { fetchSessionsFromGoogleSheets } from '../utils/googleSheets';
 import { fetchBookingsFromGoogleSheets, syncBookingsToGoogleSheets } from '../utils/photoshootBookings';
+import { hasParticipantTracking, getParticipantCount, isUserParticipating, toggleParticipation } from '../utils/participantTracker';
 
 // Helper function to try different image extensions
 const getTeacherImageSrc = (teachers) => {
@@ -234,6 +235,13 @@ const sortDays = (days) => {
               <span className="booking-hint-text">Open Details to Book</span>
             </div>
           )}
+          
+          {/* Participant tracking hint for main card */}
+          {hasParticipantTracking(session.title) && (
+            <div className="participant-tracking-hint">
+              <span className="participant-hint-text">🌱 Open Details to Join</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -295,6 +303,13 @@ const sortDays = (days) => {
               </div>
             )}
           </div>
+          
+          {/* Participant tracking hint for photo-only cards */}
+          {hasParticipantTracking(session.title) && (
+            <div className="participant-tracking-hint">
+              <span className="participant-hint-text">🌱 Open Details to Join</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -406,6 +421,11 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
   const isMeal = session.title === 'Breakfast' || session.title === 'Lunch' || session.title === 'Dinner';
   const isDemo = session.title.includes('Demo') || session.title.includes('Warm Up');
   const isPhotoshoot = session.title.toLowerCase().includes('photoshoot') || session.title.toLowerCase().includes('photo shoot');
+  const hasParticipants = hasParticipantTracking(session.title);
+  
+  // State for participant tracking
+  const [participantCount, setParticipantCount] = useState(getParticipantCount(session.title));
+  const [isParticipating, setIsParticipating] = useState(isUserParticipating(session.title));
   
   const simplifiedSessions = [
     'Arrival & Registration',
@@ -488,6 +508,29 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
                   onClick={() => setShowPhotoshootBooking(true)}
                 >
                   Book Time Slot
+                </button>
+              </div>
+            )}
+            
+            {/* Participant Tracking Section */}
+            {hasParticipants && (
+              <div className="participant-tracking-section">
+                <h4>🌱 Join the Cacao Ceremony</h4>
+                <p className="participant-description">
+                  Help us prepare the right amount of sacred cacao for everyone! 
+                </p>
+                <p className="participant-count">
+                  {participantCount} {participantCount === 1 ? 'person is' : 'people are'} planning to join
+                </p>
+                <button 
+                  className={`participant-btn ${isParticipating ? 'participating' : 'not-participating'}`}
+                  onClick={() => {
+                    const newParticipating = toggleParticipation(session.title);
+                    setIsParticipating(newParticipating);
+                    setParticipantCount(getParticipantCount(session.title));
+                  }}
+                >
+                  {isParticipating ? '✅ Count Me In' : '🌱 Count Me In'}
                 </button>
               </div>
             )}

@@ -2303,6 +2303,85 @@ body {
   font-weight: 500;
 }
 
+/* Participant tracking hint on main card */
+.participant-tracking-hint {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: rgba(46, 125, 50, 0.1); /* Light green background */
+  border: 1px solid var(--success-green);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.participant-hint-text {
+  font-size: 0.75rem;
+  color: var(--success-green);
+  font-weight: 500;
+}
+
+/* Participant tracking section */
+.participant-tracking-section {
+  background: rgba(46, 125, 50, 0.1); /* Light green background */
+  border: 1px solid var(--success-green);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.participant-tracking-section h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--success-green);
+  font-size: 1.1rem;
+}
+
+.participant-description {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+.participant-count {
+  margin: 0.5rem 0 1rem 0;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.participant-btn {
+  background: var(--success-green);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.participant-btn:hover {
+  background: #1B5E20;
+  transform: translateY(-1px);
+}
+
+.participant-btn.participating {
+  background: var(--success-green);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.participant-btn.not-participating {
+  background: #E8F5E8;
+  color: var(--success-green);
+  border: 2px solid var(--success-green);
+}
+
+.participant-btn.not-participating:hover {
+  background: var(--success-green);
+  color: white;
+}
+
 .sync-status {
   font-size: 0.85rem;
   color: var(--primary-blue);
