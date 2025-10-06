@@ -41,31 +41,52 @@ export async function fetchSessionsFromGoogleSheets() {
 
 function parseCSVToSessions(csvText) {
   try {
-    const lines = csvText.split('\n');
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    // Use a more robust CSV parsing approach that handles multi-line fields
+    const rows = [];
+    let currentRow = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < csvText.length; i++) {
+      const char = csvText[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        currentRow += char;
+      } else if (char === '\n' && !inQuotes) {
+        // End of row only if we're not inside quotes
+        if (currentRow.trim()) {
+          rows.push(currentRow.trim());
+        }
+        currentRow = '';
+      } else {
+        currentRow += char;
+      }
+    }
+    
+    // Add the last row if it exists
+    if (currentRow.trim()) {
+      rows.push(currentRow.trim());
+    }
+    
+    if (rows.length === 0) {
+      console.error('❌ No rows found in CSV');
+      return [];
+    }
+    
+    const headers = parseCSVLine(rows[0]).map(h => h.replace(/"/g, '').trim());
     
     // Debug: log headers to see what we're getting from Google Sheets
     console.log('📊 CSV Headers from Google Sheets:', headers);
     
     const sessions = [];
     
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
+  for (let i = 1; i < rows.length; i++) {
+    const line = rows[i];
     if (!line.trim()) continue;
-    
-    // Debug: log problematic lines around 73-75
-    if (i >= 72 && i <= 76) {
-      console.log(`🔍 Line ${i} content:`, JSON.stringify(line));
-    }
     
     try {
       // Parse CSV line (handle quoted fields)
       const values = parseCSVLine(line);
-      
-      // Debug: log parsed values for problematic lines
-      if (i >= 72 && i <= 76) {
-        console.log(`🔍 Line ${i} parsed values (${values.length}):`, values);
-      }
       
       // Pad values array to match headers length if needed
       while (values.length < headers.length) {
@@ -81,13 +102,9 @@ function parseCSVToSessions(csvText) {
       const session = {};
         headers.forEach((header, index) => {
           const value = values[index] || '';
+          const headerKey = header.toLowerCase().trim();
           
-          // Debug: log header processing for first few sessions
-          if (i <= 3) {
-            console.log(`🔍 Row ${i}, Header: "${header}" (${header.toLowerCase()}) = "${value}"`);
-          }
-          
-          switch (header.toLowerCase()) {
+          switch (headerKey) {
         case 'id':
           session.id = value;
           break;
@@ -134,6 +151,11 @@ function parseCSVToSessions(csvText) {
           break;
         case 'pre-requesites':
         case 'prerequisites':
+        case 'prerequisite':
+        case 'pre-requisite':
+        case 'pre-requisites':
+        case 'pre-req':
+        case 'pre-reqs':
           session.prereqs = value;
           break;
         case 'type':
@@ -152,13 +174,6 @@ function parseCSVToSessions(csvText) {
     
         // Add default tags based on session type
         session.tags = generateTags(session);
-        
-        // Debug: log session cardType for yoga sessions
-        if (session.title && (session.title.toLowerCase().includes('yoga') || session.title.toLowerCase().includes('therapeutics'))) {
-          console.log(`📝 YOGA/THERAPEUTICS: "${session.title}" - CardType: "${session.cardType}"`);
-        } else {
-          console.log(`📝 Session "${session.title}" - CardType: "${session.cardType}"`);
-        }
         
         sessions.push(session);
       } catch (lineError) {
