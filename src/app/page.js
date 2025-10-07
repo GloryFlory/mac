@@ -4,6 +4,7 @@ import sessionsData from '../data/sessions.json';
 import { fetchSessionsFromGoogleSheets } from '../utils/googleSheets';
 import { fetchBookingsFromGoogleSheets, syncBookingsToGoogleSheets } from '../utils/photoshootBookings';
 import { hasParticipantTracking, getParticipantCount, isUserParticipating, toggleParticipation } from '../utils/participantTracker';
+import { hasCapacityBooking, getBookingCount, isUserBooked, toggleBooking, isSessionFull, getBookingStatus, mergeSessionsWithBookings } from '../utils/sessionBookings';
 
 // Helper function to try different image extensions
 const getTeacherImageSrc = (teachers) => {
@@ -242,6 +243,13 @@ const sortDays = (days) => {
               <span className="participant-hint-text">🌱 Open Details to Join</span>
             </div>
           )}
+          
+          {/* Capacity booking hint for main card */}
+          {hasCapacityBooking(session) && (
+            <div className="capacity-booking-hint">
+              <span className="booking-hint-text">📋 Open Details to Book Spot</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -308,6 +316,13 @@ const sortDays = (days) => {
           {hasParticipantTracking(session.title) && (
             <div className="participant-tracking-hint">
               <span className="participant-hint-text">🌱 Open Details to Join</span>
+            </div>
+          )}
+          
+          {/* Capacity booking hint for photo-only cards */}
+          {hasCapacityBooking(session) && (
+            <div className="capacity-booking-hint">
+              <span className="booking-hint-text">📋 Open Details to Book Spot</span>
             </div>
           )}
         </div>
@@ -427,6 +442,13 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
   const [participantCount, setParticipantCount] = useState(getParticipantCount(session.title));
   const [isParticipating, setIsParticipating] = useState(isUserParticipating(session.title));
   
+  // State for capacity booking
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingNames, setBookingNames] = useState(['']);
+  
+  // State for forcing re-renders when booking status changes
+  const [, forceUpdate] = useState({});
+  
   const simplifiedSessions = [
     'Arrival & Registration',
     'Opening Circle and Ice breaker games',
@@ -534,6 +556,134 @@ const SessionModal = ({ session, onClose, setShowPhotoshootBooking }) => {
                 </button>
               </div>
             )}
+            
+            {/* Capacity Booking Section */}
+            {(() => {
+              const bookingStatus = getBookingStatus(session);
+              if (!bookingStatus) return null;
+              
+              const handleAddName = () => {
+                setBookingNames([...bookingNames, '']);
+              };
+              
+              const handleRemoveName = (index) => {
+                if (bookingNames.length > 1) {
+                  setBookingNames(bookingNames.filter((_, i) => i !== index));
+                }
+              };
+              
+              const handleNameChange = (index, value) => {
+                const newNames = [...bookingNames];
+                newNames[index] = value;
+                setBookingNames(newNames);
+              };
+              
+              const handleBookSpot = () => {
+                const validNames = bookingNames.filter(name => name.trim() !== '');
+                if (validNames.length === 0) return;
+                
+                // Pass the names to toggleBooking for proper counting and Google Sheets sync
+                toggleBooking(session.id, validNames);
+                setShowBookingForm(false);
+                setBookingNames(['']);
+                forceUpdate({});
+                
+                alert(`✅ Booked spot for: ${validNames.join(', ')}\n📋 Booking saved locally`);
+              };
+              
+              return (
+                <div className="capacity-booking-section">
+                  <h4>📋 Book Your Spot</h4>
+                  <p className="booking-description">
+                    Limited to {bookingStatus.capacity} participants - secure your spot!
+                  </p>
+                  <p className="booking-count">
+                    {bookingStatus.bookingCount}/{bookingStatus.capacity} spots taken
+                    {bookingStatus.spotsLeft > 0 && ` • ${bookingStatus.spotsLeft} left`}
+                  </p>
+                  
+                  {!bookingStatus.isBooked && !showBookingForm && (
+                    <button 
+                      className={`booking-btn not-booked ${bookingStatus.isFull ? 'full' : ''}`}
+                      onClick={() => setShowBookingForm(true)}
+                      disabled={bookingStatus.isFull}
+                    >
+                      {bookingStatus.isFull ? '❌ Session Full' : '📋 Book My Spot'}
+                    </button>
+                  )}
+                  
+                  {bookingStatus.isBooked && (
+                    <button 
+                      className="booking-btn booked"
+                      onClick={() => {
+                        toggleBooking(session.id, []); // Pass empty array when canceling
+                        forceUpdate({});
+                      }}
+                    >
+                      ✅ Spot Booked - Click to Cancel
+                    </button>
+                  )}
+                  
+                  {showBookingForm && !bookingStatus.isBooked && (
+                    <div className="booking-form">
+                      <h5>Who's joining?</h5>
+                      {bookingNames.map((name, index) => (
+                        <div key={index} className="name-input-row">
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => handleNameChange(index, e.target.value)}
+                            placeholder={`Person ${index + 1} name`}
+                            className="name-input"
+                          />
+                          {bookingNames.length > 1 && (
+                            <button 
+                              type="button"
+                              onClick={() => handleRemoveName(index)}
+                              className="remove-name-btn"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      
+                      <div className="booking-form-actions">
+                        <button 
+                          type="button"
+                          onClick={handleAddName}
+                          className="add-name-btn"
+                          disabled={bookingNames.length >= bookingStatus.spotsLeft}
+                        >
+                          + Add Person
+                        </button>
+                        
+                        <div className="booking-buttons">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setShowBookingForm(false);
+                              setBookingNames(['']);
+                            }}
+                            className="cancel-booking-btn"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={handleBookSpot}
+                            className="confirm-booking-btn"
+                            disabled={bookingNames.filter(name => name.trim() !== '').length === 0}
+                          >
+                            Book {bookingNames.filter(name => name.trim() !== '').length} Spot{bookingNames.filter(name => name.trim() !== '').length !== 1 ? 's' : ''}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             
             {/* Description - Most Important */}
             {session.description && session.description !== "" && (
@@ -1014,18 +1164,22 @@ export default function Home() {
         console.log('🔄 Attempting to load from Google Sheets...');
         const googleSheetsSessions = await fetchSessionsFromGoogleSheets();
         if (googleSheetsSessions && googleSheetsSessions.length > 0) {
-          setSessions(googleSheetsSessions);
+          // Merge sessions with booking data
+          const mergedSessions = await mergeSessionsWithBookings(googleSheetsSessions);
+          setSessions(mergedSessions);
           setDataSource('google-sheets');
-          console.log('✅ Loaded data from Google Sheets:', googleSheetsSessions.length, 'sessions');
+          console.log('✅ Loaded data from Google Sheets:', mergedSessions.length, 'sessions');
         } else {
           console.log('📄 Falling back to local JSON data');
-          setSessions(sessionsData);
+          const mergedLocalSessions = await mergeSessionsWithBookings(sessionsData);
+          setSessions(mergedLocalSessions);
           setDataSource('local');
         }
       } catch (error) {
         console.error('❌ Error loading sessions:', error);
         console.log('📄 Using local JSON data as fallback');
-        setSessions(sessionsData);
+        const mergedLocalSessions = await mergeSessionsWithBookings(sessionsData);
+        setSessions(mergedLocalSessions);
         setDataSource('local');
       } finally {
         setLoading(false);

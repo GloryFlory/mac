@@ -2382,6 +2382,219 @@ body {
   color: white;
 }
 
+/* Capacity booking section */
+.capacity-booking-section {
+  background: rgba(0, 119, 182, 0.1); /* Light blue background */
+  border: 1px solid var(--primary-blue);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.capacity-booking-section h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--primary-blue);
+  font-size: 1.1rem;
+}
+
+.booking-description {
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+.booking-count {
+  margin: 0.5rem 0 1rem 0;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.booking-btn {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.booking-btn:hover:not(:disabled) {
+  background: #0066CC;
+  transform: translateY(-1px);
+}
+
+.booking-btn.booked {
+  background: var(--success-green);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.booking-btn.not-booked {
+  background: #E3F2FD;
+  color: var(--primary-blue);
+  border: 2px solid var(--primary-blue);
+}
+
+.booking-btn.not-booked:hover {
+  background: var(--primary-blue);
+  color: white;
+}
+
+.booking-btn.full {
+  background: #FFEBEE;
+  color: var(--coral-energy);
+  border: 2px solid var(--coral-energy);
+  cursor: not-allowed;
+}
+
+.booking-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Capacity booking hint for main cards */
+.capacity-booking-hint {
+  background: rgba(0, 119, 182, 0.1);
+  border: 1px solid var(--primary-blue);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.capacity-booking-hint .booking-hint-text {
+  font-size: 0.8rem;
+  color: var(--primary-blue);
+  font-weight: 600;
+}
+
+/* Booking form styles */
+.booking-form {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.booking-form h5 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  color: var(--text-dark);
+}
+
+.name-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.name-input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.name-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 2px rgba(0, 119, 182, 0.1);
+}
+
+.remove-name-btn {
+  background: var(--coral-energy);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-name-btn:hover {
+  background: #e55347;
+}
+
+.booking-form-actions {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.add-name-btn {
+  background: #f8f9fa;
+  color: var(--primary-blue);
+  border: 1px solid var(--primary-blue);
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.add-name-btn:hover:not(:disabled) {
+  background: var(--primary-blue);
+  color: white;
+}
+
+.add-name-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.booking-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.cancel-booking-btn {
+  background: #f8f9fa;
+  color: var(--text-dark);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cancel-booking-btn:hover {
+  background: #e9ecef;
+}
+
+.confirm-booking-btn {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-booking-btn:hover:not(:disabled) {
+  background: #0066CC;
+}
+
+.confirm-booking-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .sync-status {
   font-size: 0.85rem;
   color: var(--primary-blue);

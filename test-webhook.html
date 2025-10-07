@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Apps Script Webhook</title>
+</head>
+<body>
+    <h1>Test Google Apps Script Webhook</h1>
+    <button onclick="testWebhook()">Test Webhook</button>
+    <div id="result"></div>
+
+    <script>
+        async function testWebhook() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            const testData = {
+                sessionId: 'test-session-123',
+                names: 'John Doe, Jane Smith',
+                count: 2,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Sending test data:', testData);
+            
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbwqc_joH4Wb2n_Us7JlRdA2OXdX-oQR39Ge5metG1Fu9cD2Kw98ngst769OmuDt0F1z/exec', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                    mode: 'no-cors'
+                });
+                
+                console.log('Response received:', response);
+                resultDiv.innerHTML = '✅ Webhook called successfully (check your Google Sheets for "Bookings" tab)';
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
