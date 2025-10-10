@@ -5,7 +5,8 @@ const MAIN_SHEET_ID = '11-6l7HgRwZzFrQ22Ny8_d-wvimahJdBcceuy9OBEMAM';
 const BOOKINGS_TAB_NAME = 'Bookings';
 
 // Google Sheets URLs
-const BOOKINGS_CSV_URL = `https://docs.google.com/spreadsheets/d/${MAIN_SHEET_ID}/export?format=csv&gid=1204648100`;
+// Bookings tab gid found from the URL
+const BOOKINGS_CSV_URL = `https://docs.google.com/spreadsheets/d/${MAIN_SHEET_ID}/export?format=csv&gid=1652982192`;
 const GOOGLE_APPS_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEBHOOK_URL'; // To be configured
 
 // Generate a unique device ID for this browser/device
@@ -55,14 +56,44 @@ export async function mergeSessionsWithBookings(sessions) {
   }
 }
 
-// Fetch session bookings from Google Sheets (disabled for now - using localStorage)
+// Fetch session bookings from Google Sheets
 export const fetchSessionBookingsFromGoogleSheets = async () => {
   try {
-    console.log('📊 Google Sheets reading disabled - using localStorage only');
-    console.log('� (Writes to Google Sheets still work via webhook)');
-    return null; // This forces the system to use localStorage for reading
+    console.log('📊 Fetching session bookings from Google Sheets...');
+    console.log('🔗 Using Bookings tab URL:', BOOKINGS_CSV_URL);
+    
+    const response = await fetch(BOOKINGS_CSV_URL);
+    console.log('� Response status:', response.status);
+    
+    if (!response.ok) {
+      console.log('📊 Bookings sheet not accessible, using localStorage fallback');
+      return null;
+    }
+    
+    const csvData = await response.text();
+    console.log('📄 CSV data length:', csvData.length);
+    console.log('📄 First 200 chars:', csvData.substring(0, 200));
+    
+    if (!csvData || csvData.trim().length === 0) {
+      console.log('📊 Empty session bookings data');
+      return {};
+    }
+    
+    // Check if this has the expected headers
+    if (!csvData.includes('Session ID') || !csvData.includes('Booked Names')) {
+      console.log('❌ Bookings sheet missing expected headers. Found:', csvData.split('\n')[0]);
+      return null;
+    }
+    
+    const bookings = parseSessionBookingsCSV(csvData);
+    console.log('✅ Successfully parsed session bookings from Google Sheets:', Object.keys(bookings).length, 'sessions');
+    console.log('📋 Parsed bookings:', bookings);
+    
+    return bookings;
+    
   } catch (error) {
     console.error('❌ Error fetching session bookings from Google Sheets:', error);
+    console.log('📊 Falling back to localStorage only');
     return null;
   }
 };
@@ -168,7 +199,16 @@ export function isUserBooked(sessionId, googleSheetsBookings = null) {
     const deviceId = getDeviceId();
     const localBookings = JSON.parse(localStorage.getItem('mac-session-bookings') || '{}');
     const sessionBookings = localBookings[sessionId] || {};
-    return deviceId in sessionBookings;
+    const locallyBooked = deviceId in sessionBookings;
+    
+    console.log(`🔍 DEBUG isUserBooked(${sessionId}):`, {
+      deviceId,
+      sessionBookings,
+      locallyBooked,
+      googleSheetsBookings: googleSheetsBookings ? Object.keys(googleSheetsBookings) : 'null'
+    });
+    
+    return locallyBooked;
   } catch (error) {
     console.error('Error checking user booking status:', error);
     return false;
@@ -236,10 +276,23 @@ export function getBookingStatus(session, googleSheetsBookings = null) {
     return null;
   }
   
-  const bookingCount = getBookingCount(session.id, googleSheetsBookings);
+  // Use merged session data if available, otherwise fetch booking count
+  const bookingCount = session.bookingCount !== undefined 
+    ? session.bookingCount 
+    : getBookingCount(session.id, googleSheetsBookings);
+    
   const capacity = session.capacity;
   const isFull = bookingCount >= capacity;
   const isBooked = isUserBooked(session.id, googleSheetsBookings);
+  
+  console.log(`📊 DEBUG getBookingStatus(${session.id}):`, {
+    bookingCount,
+    capacity,
+    isFull,
+    isBooked,
+    sessionBookingCount: session.bookingCount,
+    spotsLeft: capacity - bookingCount
+  });
   
   return {
     bookingCount,
@@ -253,22 +306,67 @@ export function getBookingStatus(session, googleSheetsBookings = null) {
 // Debug function to see all bookings
 export function getAllBookings() {
   try {
-    return JSON.parse(localStorage.getItem('mac-session-bookings') || '{}');
+    const bookings = JSON.parse(localStorage.getItem('mac-session-bookings') || '{}');
+    console.log('📋 DEBUG getAllBookings():', bookings);
+    return bookings;
   } catch (error) {
     console.error('Error getting all bookings:', error);
     return {};
   }
 }
 
+// Debug function to clear all local bookings
+export function clearAllLocalBookings() {
+  localStorage.removeItem('mac-session-bookings');
+  console.log('🗑️ Cleared all local bookings');
+}
+
+// Debug function to manually set a booking (for testing)
+export function debugSetBooking(sessionId, names) {
+  const deviceId = getDeviceId();
+  const localBookings = JSON.parse(localStorage.getItem('mac-session-bookings') || '{}');
+  
+  if (!localBookings[sessionId]) {
+    localBookings[sessionId] = {};
+  }
+  
+  localBookings[sessionId][deviceId] = {
+    timestamp: Date.now(),
+    deviceId: deviceId,
+    names: names,
+    count: names.length
+  };
+  
+  localStorage.setItem('mac-session-bookings', JSON.stringify(localBookings));
+  console.log('🧪 DEBUG: Set booking for', sessionId, ':', names);
+}
+
 // Sync a single session booking to Google Sheets
 const syncSessionBookingToGoogleSheets = async (sessionId, sessionBookings) => {
   try {
-    // Collect all names from all devices for this session
-    const allNames = [];
+    // First, get current bookings from Google Sheets to merge properly
+    const currentGoogleBookings = await fetchSessionBookingsFromGoogleSheets();
+    
+    // Collect all names from local storage for this session
+    const localNames = [];
     Object.values(sessionBookings).forEach(booking => {
       if (booking.names && Array.isArray(booking.names)) {
-        allNames.push(...booking.names);
+        localNames.push(...booking.names);
       }
+    });
+    
+    // Get existing names from Google Sheets
+    const existingNames = currentGoogleBookings && currentGoogleBookings[sessionId] 
+      ? currentGoogleBookings[sessionId].bookedNames || []
+      : [];
+    
+    // Merge local names with existing Google Sheets names (remove duplicates)
+    const allNames = [...new Set([...existingNames, ...localNames])];
+    
+    console.log(`📊 Merging bookings for ${sessionId}:`, {
+      existingInGoogle: existingNames,
+      localNames: localNames,
+      mergedNames: allNames
     });
     
     // Call Google Apps Script webhook to update the "Bookings" tab

@@ -4,7 +4,7 @@ import sessionsData from '../data/sessions.json';
 import { fetchSessionsFromGoogleSheets } from '../utils/googleSheets';
 import { fetchBookingsFromGoogleSheets, syncBookingsToGoogleSheets } from '../utils/photoshootBookings';
 import { hasParticipantTracking, getParticipantCount, isUserParticipating, toggleParticipation } from '../utils/participantTracker';
-import { hasCapacityBooking, getBookingCount, isUserBooked, toggleBooking, isSessionFull, getBookingStatus, mergeSessionsWithBookings } from '../utils/sessionBookings';
+import { hasCapacityBooking, getBookingCount, isUserBooked, toggleBooking, isSessionFull, getBookingStatus, mergeSessionsWithBookings, getAllBookings, clearAllLocalBookings, debugSetBooking } from '../utils/sessionBookings';
 
 // Helper function to try different image extensions
 const getTeacherImageSrc = (teachers) => {
@@ -960,26 +960,50 @@ const PhotoshootBookingModal = ({ onClose, bookings, setBookings }) => {
     const validNames = names.filter(name => name.trim() !== '');
     if (validNames.length === 0) return;
     
-    const newBookings = { ...bookings };
-    newBookings[selectedSlot] = validNames;
-    setBookings(newBookings);
+    // CRITICAL FIX: Fetch fresh data from Google Sheets before booking
+    console.log('🔄 Checking for conflicts before booking...');
     
-    // Save to user's localStorage
-    saveUserBooking(selectedSlot, validNames);
-    
-    // Reset form immediately
-    setSelectedSlot(null);
-    setNames(['']);
-    
-    // Show immediate success message
-    alert(`✅ Booked ${selectedSlot} for: ${validNames.join(', ')}\n📊 Syncing to Google Sheets...`);
-    
-    // Try to sync to Google Sheets in background
-    syncBookingsToGoogleSheets(newBookings).then(synced => {
-      console.log(synced ? '✅ Google Sheets sync completed' : '⚠️ Google Sheets sync failed or not configured');
-    }).catch(error => {
-      console.error('❌ Google Sheets sync error:', error);
-    });
+    try {
+      const freshBookings = await fetchBookingsFromGoogleSheets();
+      console.log('📊 Fresh bookings from Google Sheets:', freshBookings);
+      
+      // Check if someone else already booked this slot
+      if (freshBookings && freshBookings[selectedSlot]) {
+        alert(`❌ Sorry! Someone else just booked the ${selectedSlot} slot.\n\nBooked by: ${freshBookings[selectedSlot].join(', ')}\n\nPlease choose a different time slot.`);
+        
+        // Update local state with fresh data to show the conflict
+        setBookings(freshBookings);
+        setSelectedSlot(null);
+        setNames(['']);
+        return;
+      }
+      
+      // Slot is still available, proceed with booking
+      const newBookings = { ...freshBookings };
+      newBookings[selectedSlot] = validNames;
+      setBookings(newBookings);
+      
+      // Save to user's localStorage
+      saveUserBooking(selectedSlot, validNames);
+      
+      // Reset form immediately
+      setSelectedSlot(null);
+      setNames(['']);
+      
+      // Show immediate success message
+      alert(`✅ Booked ${selectedSlot} for: ${validNames.join(', ')}\n📊 Syncing to Google Sheets...`);
+      
+      // Try to sync to Google Sheets in background
+      syncBookingsToGoogleSheets(newBookings).then(synced => {
+        console.log(synced ? '✅ Google Sheets sync completed' : '⚠️ Google Sheets sync failed or not configured');
+      }).catch(error => {
+        console.error('❌ Google Sheets sync error:', error);
+      });
+      
+    } catch (error) {
+      console.error('❌ Error checking for booking conflicts:', error);
+      alert('❌ Unable to verify slot availability. Please try again.');
+    }
   };
   
   const handleEditBooking = (timeSlot) => {
@@ -1142,6 +1166,19 @@ const PhotoshootBookingModal = ({ onClose, bookings, setBookings }) => {
 };
 
 export default function Home() {
+  // Debug localStorage on component load
+  console.log('🚀 MAC Schedule App Loading...');
+  console.log('📋 Current localStorage bookings:', getAllBookings());
+  
+  // Make debug functions available globally
+  if (typeof window !== 'undefined') {
+    window.debugBookings = {
+      getAll: getAllBookings,
+      clear: clearAllLocalBookings,
+      setBooking: debugSetBooking
+    };
+  }
+  
   // All useState hooks first
   const [sessions, setSessions] = useState(sessionsData); // Start with local data
   const [loading, setLoading] = useState(true);

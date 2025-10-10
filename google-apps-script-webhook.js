@@ -63,9 +63,9 @@ function doPost(e) {
     console.log('📝 Session info:', { sessionName, capacity });
     
     if (targetRow > 0) {
-      // Update existing row
+      // Update existing row with the merged names from client
       if (count > 0) {
-        console.log('📝 Updating existing booking row:', targetRow);
+        console.log('📝 Updating existing booking row:', targetRow, 'with names:', names);
         bookingsSheet.getRange(targetRow, 4).setValue(names); // Update names
       } else {
         // Remove booking (count is 0)
